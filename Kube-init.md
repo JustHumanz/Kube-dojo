@@ -1,3 +1,32 @@
+# Topology
+```
+                                   +---------+
+                                   |  My PC  |
+        +--------------------------+         +--------------------------+
+        |                          +---------+                          |
+        |                               |                               |
+        |                               |                               |
+        |                               |                               |
+        |                               |                               |
+        |                               |                               |
+        |                               |                               |
+        |                               |                               |
+        v                               v                               v
++-----------------+            +-----------------+           +-----------------+
+| Ubuntu nested 1 |            | Ubuntu nested 2 |           | Ubuntu nested 3 |
+|                 |            |                 |           |                 |
+|    Master 1     |            |    Worker 1     |           |    Worker 2     |
+|                 |            |                 |           |                 |
++-----------------+            +-----------------+           +-----------------+
+        |                               |                               |
+        |                               |                               |
+        |                               |                               |
+        |                               |                               |
+        |                               |                               |
+        +---------------------------------------------------------------+
+                         Kube cluster network (200.0.0.0/24)
+```
+
 # Setup Containerd
 wget https://github.com/containerd/containerd/releases/download/v1.6.2/containerd-1.6.2-linux-amd64.tar.gz
 sudo tar Czxvf /usr/local containerd-1.6.2-linux-amd64.tar.gz
@@ -131,8 +160,3 @@ spec:
     app: nginx
   type: LoadBalancer
 ```
-
-# Kube networking 
-
-
-#### 
