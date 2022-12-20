@@ -1,6 +1,8 @@
-# Runc
+# Runc (Container)
 
-# READ & WATCH THIS LIST FIRST
+Understanding whats is actually is container
+
+### READ & WATCH THIS LIST FIRST
 - https://www.ianlewis.org/en/container-runtimes-part-1-introduction-container-r
 - https://www.ianlewis.org/en/container-runtimes-part-2-anatomy-low-level-contai
 - https://www.ianlewis.org/en/container-runtimes-part-3-high-level-runtimes
@@ -129,4 +131,3 @@ ladies and gentlemen here i present to you,the magic behind container technology
 And don't forget about uid_map&gid_map,container just got unshared the user namespaces so for now in that container the user should be nobody(the default) but the runc trics it with set the uid_map&gid_map
 
 For the last unshare you can focust on CLONE_NEWPID
-
