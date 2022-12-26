@@ -119,7 +119,7 @@ spec:
 - `kubectl apply -f metallb-system-config.yaml`
 
 # Ingress
-- `kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.5.1/deploy/static/provider/cloud/deploy.yaml`
+- `kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.3.1/deploy/static/provider/cloud/deploy.yaml`
 
 
 # Ref 
@@ -135,3 +135,4 @@ spec:
 - https://blog.quarkslab.com/digging-into-linux-namespaces-part-2.html
 - https://blog.quarkslab.com/digging-into-runtimes-runc.html
 - https://man7.org/linux/man-pages/man2/clone.2.html
+- https://www.xiemx.com/2019/09/16/k8s-ingress-nginx/index.html

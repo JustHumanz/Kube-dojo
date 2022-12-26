@@ -4,6 +4,14 @@ Deep down whats is pods and how is running in kubernetes
 
 ```bash
 cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-index
+data:
+  index.html: "<html><head><title>Kano</title></head><body>Kano/鹿乃</body></html>"
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,15 +28,20 @@ spec:
     spec:
       volumes:
         - name: shared-logs
-          emptyDir: {}    
+          emptyDir: {}
+        - name: nginx-index-cm
+          configMap:
+            name: nginx-index
       containers:
       - name: nginx
         image: nginx:latest
         ports:
+        - containerPort: 80
         volumeMounts:
           - name: shared-logs
             mountPath: /var/log/nginx
-        - containerPort: 80
+          - name: nginx-index-cm
+            mountPath: /usr/share/nginx/html/
 
       - name: nginx-sidecar-container
         image: busybox
@@ -36,6 +49,7 @@ spec:
         volumeMounts:
           - name: shared-logs
             mountPath: /var/log/nginx
+            readOnly: true
 
       nodeSelector:
         kubernetes.io/hostname: "ubuntu-nested-3"
@@ -44,7 +58,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx
+  name: nginx-deployment
   namespace: default
   labels:
     app: nginx
@@ -56,7 +70,7 @@ spec:
     targetPort: 80
   selector:
     app: nginx
-  type: NodePort
+  type: LoadBalancer
 EOF
 ```
 ### Pause
