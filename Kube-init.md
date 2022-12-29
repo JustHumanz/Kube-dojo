@@ -136,3 +136,5 @@ spec:
 - https://blog.quarkslab.com/digging-into-runtimes-runc.html
 - https://man7.org/linux/man-pages/man2/clone.2.html
 - https://www.xiemx.com/2019/09/16/k8s-ingress-nginx/index.html
+- https://www.asykim.com/blog/deep-dive-into-kubernetes-external-traffic-policies
+- https://andys.org.uk/bits/2010/01/27/iptables-fun-with-mark/comment-page-1/
