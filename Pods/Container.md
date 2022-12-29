@@ -48,9 +48,6 @@ Now let try to isolate the network namespaces
 
 - `Terminal_0#~>ifconfig`
 - `Terminal_1#~>ifconfig`
-
-![2.png](../Img/2.png)
-
 - `Terminal_0#~>sudo ip link add veth0 type veth peer name alp0`
 - `Terminal_0#~>sudo ip add add 10.0.0.10/24 dev veth0`
 - `Terminal_0#~>sudo ip link set veth0 up`
