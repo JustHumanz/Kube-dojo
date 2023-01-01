@@ -42,6 +42,11 @@ spec:
             mountPath: /var/log/nginx
           - name: nginx-index-cm
             mountPath: /usr/share/nginx/html/
+        resources:
+          requests:
+            memory: 50Mi
+          limits:
+            memory: 100Mi
 
       - name: nginx-sidecar-container
         image: busybox
@@ -91,3 +96,13 @@ the namespace pid should be same
 - `ctr -n k8s.io c info <Container ID 0> | grep shared`
 - `ctr -n k8s.io c info <Container ID 1> | grep shared`
 the mounting dir should be same
+
+
+### Resources
+- `kubectl get pods -l app=nginx -o json | jq -r '.items | .[0] | .status.qosClass, .metadata.uid'` #save the qosClass & uid
+- `kubectl get pods -l app=nginx -o json | jq '.items | .[0] | .status | .containerStatuses | .[] | .containerID' | sed 's/containerd:\/\///'` #save the containerID
+- `cd /sys/fs/cgroup/memory/kubepods/echo <qosClass> | | tr '[:upper:]' '[:lower:]'/pod<uid>`
+- `cat <container ID 0>/memory.limit_in_bytes`
+- `cat <container ID 1>/memory.limit_in_bytes`
+One of them should have 104857600
+- `python -c 'print(104857600/1024/1024)'` #the output should be 100
