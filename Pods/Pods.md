@@ -106,3 +106,28 @@ the mounting dir should be same
 - `cat <container ID 1>/memory.limit_in_bytes`
 One of them should have 104857600
 - `python -c 'print(104857600/1024/1024)'` #the output should be 100
+- `kubectl exec -it pod/<pod id> -c nginx sh` 
+- `apt update;apt install gcc`
+- `nano mem.c`
+```c
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define BLOCK_SIZE 1024*1024*256
+int main()
+{
+    char * str_buff;
+    str_buff = malloc(BLOCK_SIZE);
+    if (str_buff != NULL) {
+        memset(str_buff, atoi("kano"), BLOCK_SIZE);
+    }
+    
+    pause ();
+}
+```
+- `gcc mem.c -o mem`
+- `./mem` #should be killed
+- `exit`
+- `sudo dmesg` #exec on host
