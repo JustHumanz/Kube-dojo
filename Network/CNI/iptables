@@ -1,0 +1,8 @@
+iptables -t filter -A FORWARD -s 100.100.0.0/16 -j ACCEPT -m comment --comment "ACCEPT src pods network"
+iptables -t filter -A FORWARD -d 100.100.0.0/16 -j ACCEPT -m comment --comment "ACCEPT dst pods network"
+
+iptables -t nat -A POSTROUTING -s 100.100.1.0/24 ! -o humanz-cni0 -j MASQUERADE -m comment --comment "NAT humanz CNI" #Exec on ubuntu-nested-2
+iptables -t nat -A POSTROUTING -s 100.100.2.0/24 ! -o humanz-cni0 -j MASQUERADE -m comment --comment "NAT humanz CNI" #Exec on ubuntu-nested-3
+
+ip route add 100.100.2.0/24 via 200.0.0.30 dev enp3s0 #Exec on ubuntu-nested-2
+ip route add 100.100.1.0/24 via 200.0.0.20 dev enp3s0 #Exec on ubuntu-nested-3
