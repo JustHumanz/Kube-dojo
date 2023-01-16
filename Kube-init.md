@@ -142,3 +142,4 @@ spec:
 - https://github.com/teddyking/ns-process
 - https://www.altoros.com/blog/kubernetes-networking-writing-your-own-simple-cni-plug-in-with-bash/
 - https://github.com/s-matyukevich/bash-cni-plugin/blob/master/01_gcp/bash-cni
+- https://dustinspecker.com/posts/kubernetes-networking-from-scratch-bgp-bird-advertise-pod-routes/
