@@ -140,3 +140,5 @@ spec:
 - https://andys.org.uk/bits/2010/01/27/iptables-fun-with-mark/comment-page-1/
 - https://lwn.net/Articles/532593/
 - https://github.com/teddyking/ns-process
+- https://www.altoros.com/blog/kubernetes-networking-writing-your-own-simple-cni-plug-in-with-bash/
+- https://github.com/s-matyukevich/bash-cni-plugin/blob/master/01_gcp/bash-cni
