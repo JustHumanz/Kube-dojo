@@ -169,14 +169,14 @@ func cmdAdd(args *skel.CmdArgs) error {
 
 	IPS := InitDB(sb.Subnet)
 	BridgeName := sb.Bridge
-	ip, GatewayIP, err := net.ParseCIDR(IPS[0].IP)
+	gatewayIP, gatewayNet, err := net.ParseCIDR(IPS[0].IP)
 	if err != nil {
 		return err
 	}
 
 	Gate := net.IPNet{
-		IP:   ip,
-		Mask: GatewayIP.Mask,
+		IP:   gatewayIP,
+		Mask: gatewayNet.Mask,
 	}
 
 	br, err := CreateBridge(BridgeName, MTU, &Gate)
@@ -195,7 +195,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return err
 	}
 
-	err = SetupVeth(netns, br, args.IfName, PodIP, ip)
+	err = SetupVeth(netns, br, args.IfName, PodIP, gatewayIP)
 	if err != nil {
 		return err
 	}
@@ -211,7 +211,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 		IPs: []*current.IPConfig{
 			{
 				Address: *PodIP,
-				Gateway: ip,
+				Gateway: gatewayIP,
 			},
 		},
 	}

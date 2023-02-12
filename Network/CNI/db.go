@@ -12,12 +12,15 @@ func InitDB(cidr string) []Humanz_CNI_Storage {
 	var IPS []Humanz_CNI_Storage
 	if _, err := os.Stat(IP_STORAGE); err == nil {
 		IPS = ReadDB()
-	} else {
-		IPS = CountIP(cidr)
-		err := UpdateStorage(IPS)
-		if err != nil {
-			panic(err)
+		if IPS != nil {
+			return IPS
 		}
+	}
+
+	IPS = CountIP(cidr)
+	err := UpdateStorage(IPS)
+	if err != nil {
+		panic(err)
 	}
 
 	return IPS
