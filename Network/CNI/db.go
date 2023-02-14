@@ -45,6 +45,15 @@ func ReadDB() []Humanz_CNI_Storage {
 	return IPS
 }
 
+func inc(ip net.IP) {
+	for j := len(ip) - 1; j >= 0; j-- {
+		ip[j]++
+		if ip[j] > 0 {
+			break
+		}
+	}
+}
+
 func CountIP(cidr string) []Humanz_CNI_Storage {
 	var IPS []Humanz_CNI_Storage
 

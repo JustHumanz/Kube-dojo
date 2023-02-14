@@ -31,7 +31,6 @@ type Humanz_CNI struct {
 	Name       string `json:"name"`
 	Type       string `json:"type"`
 	Bridge     string `json:"bridge"`
-	Network    string `json:"network"`
 	Subnet     string `json:"subnet"`
 }
 
