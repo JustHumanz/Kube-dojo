@@ -1,5 +1,5 @@
 from golang:alpine
-
+RUN apk update && apk add --no-cache iptables 
 COPY . /app
 RUN mkdir config
 WORKDIR /app 

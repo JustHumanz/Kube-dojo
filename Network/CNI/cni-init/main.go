@@ -12,18 +12,10 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/coreos/go-iptables/iptables"
 	log "github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 )
-
-func readFile(path string) []byte {
-	content, err := ioutil.ReadFile(path)
-	if err != nil {
-		panic(err)
-	}
-
-	return content
-}
 
 const (
 	CNI_CONFIG_PATH  = "/app/config/10-humanz-cni-plugin.conf"
@@ -99,7 +91,7 @@ func main() {
 
 			_, podNet, err := net.ParseCIDR(PodCIDR)
 			if err != nil {
-				log.Error(err)
+				log.Fatal(err)
 			}
 
 			NodeNet := net.ParseIP(NodeIP)
@@ -120,7 +112,7 @@ func main() {
 				if err.Error() == "file exists" {
 					continue
 				}
-				panic(err)
+				log.Fatal(err)
 			}
 		} else {
 			HostPodCIDR = Node.Spec.PodCIDR
@@ -157,9 +149,113 @@ func main() {
 		log.Fatal(err)
 	}
 
-	//TODO add nat firewall
+	tab, err := iptables.New()
+	if err != nil {
+		log.Error(err)
+	}
+
+	err = tab.Append("filter", "FORWARD", "-s", HostPodCIDR, "-j", "ACCEPT", "-m", "comment", "--comment", "ACCEPT src pods network")
+	if err != nil {
+		log.Error(err)
+	}
+
+	err = tab.Append("filter", "FORWARD", "-d", HostPodCIDR, "-j", "ACCEPT", "-m", "comment", "--comment", "ACCEPT dst pods network")
+	if err != nil {
+		log.Error(err)
+	}
+
+	NatIface := detectOutsideNat()
+	if NatIface == "" {
+		log.Warn("Nat to outside network can't be found on all interface,skip the nat")
+	} else {
+		err = tab.Append("nat", "POSTROUTING", "-s", HostPodCIDR, "-o", NatIface, "-j", "MASQUERADE", "-m", "comment", "--comment", "Nat from pods to outside")
+		if err != nil {
+			log.Error(err)
+		}
+	}
 
 	log.Info("Init done,bye bye cowboy space")
 	time.Sleep(5 * time.Minute)
 	os.Exit(0)
+}
+
+func readFile(path string) []byte {
+	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+
+	return content
+}
+
+func detectOutsideNat() string {
+	lnkList, err := netlink.LinkList()
+	if err != nil {
+		log.Error(err)
+	}
+
+	InetNatIface := ""
+end:
+	for _, link := range lnkList {
+
+		linkAddrs, err := netlink.AddrList(link, netlink.FAMILY_V4)
+		if err != nil {
+			log.Error(err)
+		}
+
+		for _, linkAddr := range linkAddrs {
+			if err := curlCloudflare(linkAddr.IP); err != nil {
+				log.WithFields(log.Fields{
+					"Iface": link.Attrs().Name,
+					"IP":    linkAddr.IP.String(),
+				}).Warn("Nat to outside can't be found : %s", err)
+			} else {
+				log.WithFields(log.Fields{
+					"Iface": link.Attrs().Name,
+					"IP":    linkAddr.IP.String(),
+				}).Info("Nat to outside found")
+
+				InetNatIface = link.Attrs().Name
+				break end
+			}
+		}
+	}
+
+	return InetNatIface
+}
+
+func curlCloudflare(ip net.IP) error {
+	localTCPAddr := net.TCPAddr{
+		IP: ip,
+	}
+
+	webclient := &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				LocalAddr: &localTCPAddr,
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+				DualStack: true,
+			}).DialContext,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}
+
+	req, err := http.NewRequest("GET", "http://1.1.1.1", nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := webclient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return nil
+
 }
