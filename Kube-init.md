@@ -28,46 +28,27 @@
 ```
 
 # Setup Containerd
-- `wget https://github.com/containerd/containerd/releases/download/v1.6.2/containerd-1.6.2-linux-amd64.tar.gz`
-- `sudo tar Czxvf /usr/local containerd-1.6.2-linux-amd64.tar.gz`
-
-- `wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service`
-- `sudo mv containerd.service /usr/lib/systemd/system/`
-
-- `sudo systemctl daemon-reload`
-- `sudo systemctl enable --now containerd`
-- `sudo systemctl status containerd`
-
-- `wget https://github.com/opencontainers/runc/releases/download/v1.1.1/runc.amd64`
-- `sudo install -m 755 runc.amd64 /usr/local/sbin/runc`
-
-- `sudo mkdir -p /etc/containerd/`
+- `mkdir -m 0755 -p /etc/apt/keyrings`
+- `curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg`
+- `echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null`
+- `apt update;apt-get install containerd.io -y`
 - `containerd config default | sudo tee /etc/containerd/config.toml`
-
-- `sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml`
-
-- `sudo systemctl restart containerd`
-
-- `cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf \noverlay \nbr_netfilter \nEOF`
+- `sudo echo -e "noverlay\nbr_netfilter" > /etc/modules-load.d/containerd.conf`
 
 - `sudo modprobe overlay `
 - `sudo modprobe br_netfilter`
-
-- `cat <<EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf net.bridge.bridge-nf-call-iptables = 1 \nnet.ipv4.ip_forward = 1 \nnet.bridge.bridge-nf-call-ip6tables = 1 \nEOF`
+- `sudo echo -e "net.bridge.bridge-nf-call-iptables = 1\nnet.ipv4.ip_forward = 1\nnet.bridge.bridge-nf-call-ip6tables = 1" > /etc/sysctl.d/99-kubernetes-cri.conf`
 
 - `nano /etc/containerd/config.toml` #set SystemdCgroup to false
-- `systemctl restart containerd kubelet`
-
 - `sudo sysctl --system`
+- `systemctl restart containerd`
 
 # Setup Kube
 - `sudo apt update && sudo apt-get install -y apt-transport-https curl`
 - `curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -`
-
-- `cat <<EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list\ndeb https://apt.kubernetes.io/ kubernetes-xenial main\nEOF`
+- `sudo echo -e "deb https://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list`
 
 - `sudo apt update`
-
 - `sudo apt-get install -y kubelet=1.20.15-00 kubeadm=1.20.15-00 kubectl=1.20.15-00`
 - `sudo apt-mark hold kubelet kubeadm kubectl`
 

@@ -1,10 +1,8 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
+	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -15,6 +13,10 @@ import (
 	"github.com/coreos/go-iptables/iptables"
 	log "github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
+	k8sv1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -23,60 +25,59 @@ const (
 	CNI_BIN_PATH_DST = "/app/bin/humanz-cni"
 )
 
+func addNewRoute(PodCIDR, NodeIP string) error {
+	_, podNet, err := net.ParseCIDR(PodCIDR)
+	if err != nil {
+		return err
+	}
+
+	NodeNet := net.ParseIP(NodeIP)
+	NewRoute := netlink.Route{
+		Gw:  NodeNet,
+		Dst: podNet,
+	}
+
+	log.WithFields(log.Fields{
+		"PodCIDR": PodCIDR,
+		"Gateway": NodeNet,
+	}).Info("Setup ip route")
+
+	err = netlink.RouteAdd(&NewRoute)
+	if err != nil {
+		if err.Error() == "file exists" {
+			return nil
+		}
+
+		return err
+	}
+
+	return nil
+}
+
 func main() {
 	NodeHostName := os.Getenv("HOSTNAME")
 	log.WithFields(log.Fields{
 		"Hostname": NodeHostName,
 	}).Info("Init CNI")
 
-	K8s_SVC := fmt.Sprintf("https://%s/api/v1/nodes/", os.Getenv("KUBERNETES_SERVICE_HOST"))
-	token := readFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
-	ca := readFile("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
-
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(ca)
-
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: caCertPool,
-			},
-		},
-	}
-
-	req, err := http.NewRequest("GET", K8s_SVC, nil)
+	config, err := rest.InClusterConfig()
 	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", string(token)))
-
-	resp, err := client.Do(req)
+	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		log.Error(err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Panic("Invalid status code,check your rbac")
+		log.Fatal(err)
 	}
 
-	var NodesInfo k8sNode
-
-	body, err := ioutil.ReadAll(resp.Body)
+	nodeList, err := clientset.CoreV1().Nodes().List(context.Background(), v1.ListOptions{})
 	if err != nil {
-		log.Error(err)
-
-	}
-
-	err = json.Unmarshal(body, &NodesInfo)
-	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
 	}
 
 	HostPodCIDR := ""
-	for _, Node := range NodesInfo.Items {
-		if Node.Metadata.Name != NodeHostName {
+	for _, Node := range nodeList.Items {
+		if Node.Name != NodeHostName {
 			//Do ip route
 			PodCIDR := Node.Spec.PodCIDR
 			NodeIP := func() string {
@@ -89,31 +90,11 @@ func main() {
 				return ""
 			}()
 
-			_, podNet, err := net.ParseCIDR(PodCIDR)
+			err := addNewRoute(PodCIDR, NodeIP)
 			if err != nil {
-				log.Fatal(err)
+				log.Panic(err)
 			}
 
-			NodeNet := net.ParseIP(NodeIP)
-			NewRoute := netlink.Route{
-				Gw:  NodeNet,
-				Dst: podNet,
-			}
-
-			log.WithFields(log.Fields{
-				"Hostname":     NodeHostName,
-				"Dst Hostname": Node.Metadata.Name,
-				"PodCIDR":      PodCIDR,
-				"Gateway":      NodeNet,
-			}).Info("Setup ip route")
-
-			err = netlink.RouteAdd(&NewRoute)
-			if err != nil {
-				if err.Error() == "file exists" {
-					continue
-				}
-				log.Fatal(err)
-			}
 		} else {
 			HostPodCIDR = Node.Spec.PodCIDR
 		}
@@ -133,7 +114,7 @@ func main() {
 	}).Info("Dump cni plugin config")
 
 	file, _ := json.MarshalIndent(myCni, "", " ")
-	err = ioutil.WriteFile(CNI_CONFIG_PATH, file, 0644)
+	err = ioutil.WriteFile(CNI_CONFIG_PATH, file, 0755)
 	if err != nil {
 		log.Error(err)
 	}
@@ -154,12 +135,12 @@ func main() {
 		log.Error(err)
 	}
 
-	err = tab.Append("filter", "FORWARD", "-s", HostPodCIDR, "-j", "ACCEPT", "-m", "comment", "--comment", "ACCEPT src pods network")
+	err = tab.AppendUnique("filter", "FORWARD", "-s", HostPodCIDR, "-j", "ACCEPT", "-m", "comment", "--comment", "ACCEPT src pods network")
 	if err != nil {
 		log.Error(err)
 	}
 
-	err = tab.Append("filter", "FORWARD", "-d", HostPodCIDR, "-j", "ACCEPT", "-m", "comment", "--comment", "ACCEPT dst pods network")
+	err = tab.AppendUnique("filter", "FORWARD", "-d", HostPodCIDR, "-j", "ACCEPT", "-m", "comment", "--comment", "ACCEPT dst pods network")
 	if err != nil {
 		log.Error(err)
 	}
@@ -168,14 +149,66 @@ func main() {
 	if NatIface == "" {
 		log.Warn("Nat to outside network can't be found on all interface,skip the nat")
 	} else {
-		err = tab.Append("nat", "POSTROUTING", "-s", HostPodCIDR, "-o", NatIface, "-j", "MASQUERADE", "-m", "comment", "--comment", "Nat from pods to outside")
+		err = tab.AppendUnique("nat", "POSTROUTING", "-s", HostPodCIDR, "-o", NatIface, "-j", "MASQUERADE", "-m", "comment", "--comment", "Nat from pods to outside")
 		if err != nil {
 			log.Error(err)
 		}
 	}
 
 	log.Info("Init done,bye bye cowboy space")
-	time.Sleep(5 * time.Minute)
+
+	CniNodeList, err := clientset.CoreV1().Nodes().List(context.TODO(), v1.ListOptions{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	knodeList := make(map[string]bool)
+
+	for _, v := range CniNodeList.Items {
+		knodeList[v.Name] = true
+	}
+
+	NodesWatch, err := clientset.CoreV1().Nodes().Watch(context.TODO(), v1.ListOptions{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for NodesEvent := range NodesWatch.ResultChan() {
+		Node := NodesEvent.Object.(*k8sv1.Node)
+		if !knodeList[Node.Name] {
+
+			newNode, err := clientset.CoreV1().Nodes().Get(context.TODO(), Node.Name, v1.GetOptions{})
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			PodCIDR := newNode.Spec.PodCIDR
+			NodeIP := func() string {
+				for _, v := range newNode.Status.Addresses {
+					if v.Type == "InternalIP" {
+						return v.Address
+					}
+				}
+
+				return ""
+			}()
+
+			log.WithFields(log.Fields{
+				"NodeName": Node.Name,
+				"PodsCIDR": PodCIDR,
+				"NodeIP":   NodeIP,
+			}).Info("New node join")
+
+			//Add ip route to new node
+			err = addNewRoute(PodCIDR, NodeIP)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			knodeList[Node.Name] = true
+		}
+	}
+
 	os.Exit(0)
 }
 
