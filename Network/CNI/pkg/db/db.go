@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"encoding/json"
@@ -8,17 +8,35 @@ import (
 	"os"
 )
 
-func InitDB(cidr string) []Humanz_CNI_Storage {
-	var IPS []Humanz_CNI_Storage
+const (
+	IP_STORAGE = "/run/humanz-cni.json"
+)
+
+type Humanz_CNI struct {
+	CniVersion string `json:"cniVersion"`
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	Bridge     string `json:"bridge"`
+	Subnet     string `json:"subnet"`
+}
+
+type Humanz_CNI_Storage []struct {
+	IP   string `json:"IP"`
+	Used bool   `json:"Used"`
+}
+
+func InitDB(cidr string) Humanz_CNI_Storage {
+	var IPS Humanz_CNI_Storage
 	if _, err := os.Stat(IP_STORAGE); err == nil {
-		IPS = ReadDB()
+		IPS := ReadDB()
 		if IPS != nil {
 			return IPS
 		}
+
 	}
 
 	IPS = CountIP(cidr)
-	err := UpdateStorage(IPS)
+	err := IPS.UpdateDB()
 	if err != nil {
 		panic(err)
 	}
@@ -26,7 +44,7 @@ func InitDB(cidr string) []Humanz_CNI_Storage {
 	return IPS
 }
 
-func ReadDB() []Humanz_CNI_Storage {
+func ReadDB() Humanz_CNI_Storage {
 	jsonFile, err := os.Open(IP_STORAGE)
 	if err != nil {
 		panic(err)
@@ -34,7 +52,7 @@ func ReadDB() []Humanz_CNI_Storage {
 	defer jsonFile.Close()
 
 	var (
-		IPS []Humanz_CNI_Storage
+		IPS Humanz_CNI_Storage
 	)
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 	err = json.Unmarshal(byteValue, &IPS)
@@ -45,23 +63,14 @@ func ReadDB() []Humanz_CNI_Storage {
 	return IPS
 }
 
-func inc(ip net.IP) {
-	for j := len(ip) - 1; j >= 0; j-- {
-		ip[j]++
-		if ip[j] > 0 {
-			break
-		}
-	}
-}
-
-func CountIP(cidr string) []Humanz_CNI_Storage {
-	var IPS []Humanz_CNI_Storage
+func CountIP(cidr string) Humanz_CNI_Storage {
 
 	ip, ipnet, err := net.ParseCIDR(cidr)
 	if err != nil {
-		return nil
+		panic(err)
 	}
 
+	var data Humanz_CNI_Storage
 	ipmasklen, _ := ipnet.Mask.Size()
 	total := 1<<uint(net.IPv4len*8-ipmasklen) - 2
 
@@ -77,29 +86,32 @@ func CountIP(cidr string) []Humanz_CNI_Storage {
 			}
 		}
 
-		tmp := Humanz_CNI_Storage{
-			IP:   fmt.Sprintf("%s/%d", newIP.String(), ipmasklen),
-			Used: false,
-		}
-
+		Used := false
 		if z == 1 {
-			tmp.Used = true
+			Used = true
 		}
 
-		IPS = append(IPS, tmp)
+		data = append(data, struct {
+			IP   string "json:\"IP\""
+			Used bool   "json:\"Used\""
+		}{
+			IP:   fmt.Sprintf("%s/%d", newIP.String(), ipmasklen),
+			Used: Used,
+		})
 	}
 
-	return IPS
+	return data
 }
 
-func UpdateStorage(DataIP []Humanz_CNI_Storage) error {
-	file, err := json.MarshalIndent(DataIP, "", " ")
+func (data *Humanz_CNI_Storage) UpdateDB() error {
+	file, err := json.MarshalIndent(data, "", " ")
 	if err != nil {
 		return err
 	}
 
 	err = ioutil.WriteFile(IP_STORAGE, file, 0644)
 	return err
+
 }
 
 func GeneratePodsIP() (*net.IPNet, error) {
@@ -125,7 +137,10 @@ func GeneratePodsIP() (*net.IPNet, error) {
 		}
 	}
 
-	UpdateStorage(IPS)
+	err := IPS.UpdateDB()
+	if err != nil {
+		return nil, err
+	}
 
 	return &PodIP, nil
 }
@@ -149,7 +164,10 @@ func RemoveIP(DelIP *net.IPNet) error {
 		}
 	}
 
-	UpdateStorage(IPS)
+	err := IPS.UpdateDB()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
