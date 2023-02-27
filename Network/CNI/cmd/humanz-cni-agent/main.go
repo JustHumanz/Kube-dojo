@@ -126,14 +126,9 @@ func main() {
 
 	log.Info("Init done,bye bye cowboy space")
 
-	CniNodeList, err := clientset.CoreV1().Nodes().List(context.TODO(), v1.ListOptions{})
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	knodeList := make(map[string]bool)
 
-	for _, v := range CniNodeList.Items {
+	for _, v := range nodeList.Items {
 		knodeList[v.Name] = true
 	}
 
