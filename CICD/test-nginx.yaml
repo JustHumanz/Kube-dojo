@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: humanz-nginx
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+  selector:
+    app: humanz-nginx
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-test
+spec:
+  selector:
+    matchLabels:
+      app: humanz-nginx
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: humanz-nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80

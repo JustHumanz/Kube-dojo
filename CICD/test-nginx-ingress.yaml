@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-nginx-humanz
+  annotations:
+    cert-manager.io/issuer: "letsencrypt-humanz"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - test-nginx.kano2525.dev
+    secretName: humanz-tls
+
+  rules:
+    - host: test-nginx.kano2525.dev
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: humanz-nginx
+                port:
+                  number: 80
+            path: /
