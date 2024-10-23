@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: netshoot-1
+spec:
+  nodeName: kube-nkdqq-default-worker-vrbms-x4t7h-f7vgf
+  containers:
+  - name: netshoot-1
+    image: nicolaka/netshoot
+    imagePullPolicy: IfNotPresent
+    command: ["/bin/bash","-c", "while true; do ping localhost; sleep 60;done"]
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: netshoot-2
+spec:
+  nodeName: kube-nkdqq-default-worker-vrbms-x4t7h-m94t2
+  containers:
+  - name: netshoot-2
+    image: nicolaka/netshoot
+    imagePullPolicy: IfNotPresent
+    command: ["/bin/bash","-c", "while true; do ping localhost; sleep 60;done"]

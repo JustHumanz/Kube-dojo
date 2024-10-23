@@ -13,12 +13,12 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-test
+  name: humanz-nginx
 spec:
   selector:
     matchLabels:
       app: humanz-nginx
-  replicas: 3
+  replicas: 6
   template:
     metadata:
       labels:

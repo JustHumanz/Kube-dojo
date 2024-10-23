@@ -1,0 +1,16 @@
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: "ubuntu-vm-dv"
+spec:
+  source:
+    http:
+      url: "https://cloud-images.ubuntu.com/daily/server/jammy/current/jammy-server-cloudimg-amd64.img"
+  pvc:
+    accessModes:
+    - ReadWriteMany
+    resources:
+      requests:
+        storage: "5Gi"
+    storageClassName: rook-cephfs
+    volumeMode: Filesystem

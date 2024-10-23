@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ubuntu-vm1
+spec:
+  storageClassName: rook-cephfs
+  dataSource:
+    name: ubuntu-vm-dv
+    kind: PersistentVolumeClaim 
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  labels:
+    kubevirt.io/os: linux
+  name: ubuntu-vm1
+spec:
+  running: true
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        kubevirt.io/domain: ubuntu-vm1
+      annotations:
+        ovn.kubernetes.io/eip: 160.XX.XX.XX
+        kubevirt.io/allow-pod-bridge-network-live-migration: ""
+    spec:
+      domain:
+        cpu:
+          cores: 1
+        devices:
+          disks:
+          - disk:
+              bus: virtio
+            name: disk0
+          - cdrom:
+              bus: sata
+              readonly: true
+            name: cloudinitdisk
+        resources:
+          requests:
+            memory: 1Gi
+      volumes:
+      - name: disk0
+        persistentVolumeClaim:
+          claimName: ubuntu-vm1
+      - cloudInitNoCloud:
+          userData: |
+            #cloud-config
+            hostname: vm1
+            ssh_pwauth: True
+            disable_root: false
+            ssh_authorized_keys:
+            - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDUli7xoyV+Wrw1tBGY6NQs8UpOzP9MehQg4R1lwJEi0H/UWUO2Ak+JKnhP+3nleyGEPRxPoluin0nRvgUPg3/1SpZeLBPjYVo6vYkZZUalS5Rq84EKq9gwGv6hwxyD7cVun9HaVgC8att4DsSzTReVMJ1p/qMlR6F46gz/aiWhG7QYvZ5YucVAtQqNfwBcEcMmRcaws5EoARY31dMeiynXxrbTGS7X3/b9qG4fqrTTlI8sxCu6t9RDP9q4Izy0eKNU4utynD2nWN7EBWYOfIZErcvGqTgfVW8XBxWF1JV/SEKIjtrv5Pz4wFcEg9u+pvtcUi5yNfn4lQfmsDQ6Y46ATCgVXSjfYZFYKtQ1JwqRUcaO54DHL0sjpIV6wwqUYV/gxloqeGrAF++lINhSAF3cqQtg791kLyeONnRFQOogyHyCP+5/Nb8bkSeVt8qDqkES9pRqticGn602sgz1njGJW6beVvdhogv0VSYaktbhoM5jiuFj1yefeq4CAo7bURE= humanz@403
+            package_update: true
+            packages:
+            - qemu-guest-agent
+            runcmd:
+            - [ systemctl, start, qemu-guest-agent ]
+            - [ sudo, apt, install, nginx,-y ]
+        name: cloudinitdisk

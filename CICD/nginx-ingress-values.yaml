@@ -1,0 +1,22 @@
+rbac:
+  create: true
+
+controller:
+  publishService:
+    enabled: true
+  replicaCount: 3
+  minAvailable: 1
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 50
+    targetMemoryUtilizationPercentage: 50
+  # Octavia config
+  config:
+    use-forwarded-headers: "true"
+    compute-full-forwarded-for: "true"
+    use-proxy-protocol: "true"
+  service:
+    annotations:
+      loadbalancer.openstack.org/proxy-protocol: "true"

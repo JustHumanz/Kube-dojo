@@ -1,2 +1,4 @@
 Pods/container/rootfs
 config/
+Network/CNI/cilium/cilium
+bin/

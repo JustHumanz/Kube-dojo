@@ -1,0 +1,15 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: letsencrypt-humanz
+  namespace: humanz-dev
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: just@humanz.moe
+    privateKeySecretRef:
+      name: letsencrypt-humanz
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx
