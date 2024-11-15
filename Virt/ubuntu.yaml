@@ -21,14 +21,14 @@ metadata:
     kubevirt.io/os: linux
   name: ubuntu-vm1
 spec:
-  running: true
+  runStrategy: true
   template:
     metadata:
       creationTimestamp: null
       labels:
         kubevirt.io/domain: ubuntu-vm1
       annotations:
-        ovn.kubernetes.io/eip: 160.XX.XX.XX
+        ovn.kubernetes.io/eip: 160.X.X.X
         kubevirt.io/allow-pod-bridge-network-live-migration: ""
     spec:
       domain:
