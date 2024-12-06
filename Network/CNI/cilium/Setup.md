@@ -7,6 +7,47 @@ kubectl delete -n kube-system daemonset calico-node
 kubectl -n kube-system delete pod/calico-kube-controllers-xxxxxx
 ```
 
+```bash
+#!/bin/bash
+
+# Variables
+APISERVER=$(grep "server" $KUBECONFIG | awk '{print $2}') # Adjust if your API server is on a different address
+
+# Extract client certificate and key from k3s config
+CLIENT_CERT_DATA=$(grep "client-certificate-data" $KUBECONFIG | awk '{print $2}')
+CLIENT_KEY_DATA=$(grep "client-key-data" $KUBECONFIG | awk '{print $2}')
+
+# Decode and save to temporary files
+echo "$CLIENT_CERT_DATA" | base64 -d > /tmp/client.crt
+echo "$CLIENT_KEY_DATA" | base64 -d > /tmp/client.key
+
+# Loop through each node
+for NODE_NAME in $(kubectl get nodes -o=jsonpath='{.items[*].metadata.name}'); do
+    # Get the conditions of the node in JSON format
+    CONDITIONS=$(kubectl get node $NODE_NAME -o=jsonpath='{.status.conditions}')
+
+    # Check if the node has the NodeNetworkUnavailable condition
+    if echo "$CONDITIONS" | grep -q "NetworkUnavailable"; then
+        # Determine the index of the NodeNetworkUnavailable condition
+        CONDITION_INDEX=$(echo "$CONDITIONS" | jq '. | map(.type) | index("NetworkUnavailable")')
+
+        echo "Patching node: $NODE_NAME at index $CONDITION_INDEX"
+        curl -k --cert /tmp/client.crt \
+             --key /tmp/client.key \
+             -H "Content-Type: application/json-patch+json" \
+             -X PATCH $APISERVER/api/v1/nodes/$NODE_NAME/status \
+             --data "[{ \"op\": \"remove\", \"path\": \"/status/conditions/$CONDITION_INDEX\"}]"
+    else
+        echo "Skipping node: $NODE_NAME as it doesn't have the NodeNetworkUnavailable condition"
+    fi
+done
+
+# Cleanup temporary files
+rm /tmp/client.crt /tmp/client.key
+
+echo "Done patching nodes! "
+```
+
 ## Install cilium
 
 ```bash

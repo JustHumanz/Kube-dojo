@@ -121,6 +121,9 @@ spec:
 # Ingress
 - `kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.3.1/deploy/static/provider/cloud/deploy.yaml`
 
+# Tshoot
+- `kubectl debug node/<nodeid> -it --image=busybox`
+- `chroot /host`
 
 # Ref 
 - https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/
