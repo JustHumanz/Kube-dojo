@@ -2,7 +2,15 @@
 - `python3 -m venv atmosphere-env`
 - `source ~/atmosphere-env/bin/activate`
 - `pip install ansible`
-- `ansible-galaxy collection install vexxhost.atmosphere`
+- `mkdir -p atmosphere-cloud-config`
+- `nano atmosphere-cloud-config/requirements.yaml`
+```yml
+---
+collections:
+  - name: vexxhost.atmosphere
+    version: 4.5.0
+```
+- `ansible-galaxy collection install -r atmosphere-cloud-config/requirements.yaml`
 - `mkdir -p atmosphere-cloud-config/playbooks`
 - `ansible-playbook -e "workspace_path=~/atmosphere-cloud-config/inventory" -e "ceph_public_network=10.10.10.0/24" -e "domain_name=humanz.cloud" vexxhost.atmosphere.generate_workspace`
 - `cd ~/atmosphere-cloud-config/`
